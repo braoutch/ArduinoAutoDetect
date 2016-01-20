@@ -4,11 +4,12 @@ using System.Collections;
 using System.Collections.Generic;
 using System.IO.Ports;
 using System;
+using System.IO;
 
 public class Script : MonoBehaviour
 {
 	public SerialPort goodStream;
-	public string arduinoCode = "code";
+	public int arduinoCode;
 	public List<SerialPort> serialPortList = new List<SerialPort> ();
 	int portfermes = 0;
 
@@ -42,9 +43,10 @@ public class Script : MonoBehaviour
 			if (stream.IsOpen) {
 				Debug.Log ("Le port " + i + " est ouvert , son nom est " + devices [i]);
 				serialPortList.Add (stream);
+				stream.Close ();
 			} else
 				continue;
-			Debug.Log ("initialisation réussie pour i = " + i);
+			//Debug.Log ("initialisation réussie pour i = " + i);
 		
 
 		}
@@ -54,30 +56,26 @@ public class Script : MonoBehaviour
 
 	public void Detecter ()
 	{
-		string serialReadTest;
 		for (int i = 0; i < serialPortList.Count; i++) {
-			
+
 			try {
-				serialReadTest = serialPortList [i].ReadLine ();
-			} catch (Exception f) {
-				Debug.Log ("oh bah ça marche pas");
+				serialPortList [i].Open ();
+				serialPortList [i].ReadTimeout = 500;
+				string serialReadTest = serialPortList [i].ReadLine ();
+				if (int.Parse (serialReadTest) == arduinoCode) {
+					Debug.Log ("MUHAHAHAHAHA c'est le bon code");
+					goodStream = serialPortList [i];
+					break;
+	
+				} else {
+					serialPortList [i].Close ();
+					Debug.Log ("Mauvais code : " + serialReadTest);
+				}
+			} catch (TimeoutException) {
+				Debug.Log ("oh bah il parle pas celui-là !");
+				serialPortList [i].Close ();
 				continue;
 			}
-			if (serialReadTest == arduinoCode) {
-				Debug.Log ("MUHAHAHAHAHA c'est le bon code");
-				goodStream = serialPortList [i];
-				break;
-
-			} else {
-				serialPortList [i].Close ();
-				Debug.Log ("Mauvais code !");
-			}
 		}
-	}
-
-	// Update is called once per frame
-	void Update ()
-	{
-
 	}
 }
