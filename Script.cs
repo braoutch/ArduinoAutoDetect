@@ -1,4 +1,4 @@
-﻿//IF ITS NOT WORKING TRY TO USE MONO 2.0 OR 2.0SUBSET !!!
+﻿//USE MONO 2.0 INSTEAD OF 2.0SUBSET !!!
 using UnityEngine;
 using System.Collections;
 using System.Collections.Generic;
@@ -6,76 +6,77 @@ using System.IO.Ports;
 using System;
 using System.IO;
 
-public class Script : MonoBehaviour
+public class ArduinoAutoDetect : MonoBehaviour
 {
-	public SerialPort goodStream;
-	public int arduinoCode;
 	public List<SerialPort> serialPortList = new List<SerialPort> ();
-	int portfermes = 0;
+	//Every SerialPort we can open
+	int closedPorts = 0;
 
-	// Use this for initialization
-	void Awake ()
+	void Start ()
+	{
+		SerialPort monserialport = FindOpenPorts (206);
+	}
+
+	SerialPort FindOpenPorts (int arduinoCode)
 	{
 		SerialPort stream;
 		var devices = SerialPort.GetPortNames ();
-	
+
 		if (devices.Length == 0) {
 			// try manual enumeration
 			devices = System.IO.Directory.GetFiles ("/dev/");
 			Debug.Log ("No ports found with GetPortNames");
 		}
-	
+
 		Debug.Log (devices.Length + " port(s) série trouvé(s)");
-		
+
 		for (int j = 0; j < devices.Length; j++) {
 			Debug.Log (devices [j]);
 		}
-		//On tente d'ouvrir tous les ports
+		//Try to open every port
 		for (int i = 0; i < devices.Length; i++) {
 
 			try {
 				stream = new SerialPort (devices [i], 115200);
 				stream.Open ();
+				if (WhichSerialPortAreU (stream, arduinoCode)) {
+					return stream;
+				}
 			} catch (Exception e) {
-				portfermes++;
+				closedPorts++;
 				continue;
 			}
 			if (stream.IsOpen) {
-				Debug.Log ("Le port " + i + " est ouvert , son nom est " + devices [i]);
+				Debug.Log ("Port " + i + " is open , named " + devices [i]);
 				serialPortList.Add (stream);
 				stream.Close ();
 			} else
 				continue;
-			//Debug.Log ("initialisation réussie pour i = " + i);
-		
+
 
 		}
-		//On teste tous les ports qu'on a réussi à ouvrir
-		Debug.Log (portfermes + " ports fermés.");
+		Debug.Log (closedPorts + " closed ports.");
+		Debug.Log ("Nothing found !");
+		return null;
 	}
 
-	public void Detecter ()
+	public bool WhichSerialPortAreU (SerialPort stream, int arduinoCode)
 	{
-		for (int i = 0; i < serialPortList.Count; i++) {
+		
+		try {
+			stream.ReadTimeout = 500;
+			string serialReadTest = stream.ReadLine ();
+			if (int.Parse (serialReadTest) == arduinoCode) {
+				Debug.Log ("here you are !");
+				return true;
 
-			try {
-				serialPortList [i].Open ();
-				serialPortList [i].ReadTimeout = 500;
-				string serialReadTest = serialPortList [i].ReadLine ();
-				if (int.Parse (serialReadTest) == arduinoCode) {
-					Debug.Log ("MUHAHAHAHAHA c'est le bon code");
-					goodStream = serialPortList [i];
-					break;
-	
-				} else {
-					serialPortList [i].Close ();
-					Debug.Log ("Mauvais code : " + serialReadTest);
-				}
-			} catch (TimeoutException) {
-				Debug.Log ("oh bah il parle pas celui-là !");
-				serialPortList [i].Close ();
-				continue;
+			} else {
+				Debug.Log ("Bad code : " + serialReadTest);
 			}
+		} catch (TimeoutException) {
+			Debug.Log ("Timeout !");
 		}
+
+		return false;
 	}
 }
